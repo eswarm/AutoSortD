@@ -6,7 +6,7 @@
 #include <QDirIterator>
 
 //const QString directories[] = {"audio", "video", "code", "documents", "archives", "images", "others" };
-int fileTypePriority[] = {5, 5, 1, 5, 5 ,20, 1};
+int fileTypePriority[] = {5, 5, 1, 5, 5 ,10, 1};
 
 DirWatcher::DirWatcher(QObject *parent) : QObject(parent)
 {
@@ -15,7 +15,6 @@ mSettings = new QSettings(QSettings::IniFormat, QSettings::UserScope,"eswar", "s
 mFolderList = new QStringList();
 mWatcher = new QFileSystemWatcher();
 mDirNames = new QHash<DirType, QString>();
-mMimeType = new QHash<QString, DirType>();
 connect(mWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(contentChanged(QString)) );
 
 /* Initialize the names */
@@ -25,16 +24,13 @@ mDirNames->insert(CODE, "code");
 mDirNames->insert(DOCUMENT, "documents");
 mDirNames->insert(ARCHIVE, "archives");
 mDirNames->insert(OTHERS, "others");
-
-/*Initialize mimes */
-mMimeType->insert("audio", AUDIO);
-mMimeType->insert("video", VIDEO);
+mDirNames->insert(IMAGE, "images");
 
 mMimesSuffix = new QHash<QString, QString>();
 
 }
 
-void DirWatcher::addFolder(const QString &folderName)
+void DirWatcher::addToSettings(const QString &folderName)
 {
 
     int size = mSettings->beginReadArray("folders");
@@ -72,7 +68,7 @@ QList<QString> DirWatcher::getFolders()
     return folderList;
 }
 
-bool DirWatcher::removeFolder(const QString& folderName)
+bool DirWatcher::removeFromSettings(const QString& folderName)
 {
     QList<QString> folderList = getFolders();
     QList<QString> newList;
@@ -127,17 +123,16 @@ void DirWatcher::sortDirectory(QString path)
         return;
     }
 
-
     QDirIterator it(path, QDir::NoDotAndDotDot | QDir::AllEntries | QDir::Writable);
 
     while (it.hasNext()) {
-        QString path = it.next();
-        qDebug() << path;
+        QString crntPath = it.next();
+        //qDebug() << crntPath;
         QFileInfo fileInfo = it.fileInfo();
         if(!isSpecialDirectory(fileInfo))
         {
             DirType type = getType(it.fileInfo());
-            move(fileInfo, type);
+            move(fileInfo, type, path);
         }
     }
 
@@ -147,18 +142,38 @@ void DirWatcher::sortDirectory(QString path)
     */
 }
 
-void DirWatcher::move(const QFileInfo &info, DirType type)
+void DirWatcher::move(const QFileInfo &info, DirType type, const QString& path)
 {
-    qDebug() << "Type :: " << type << "Name :: " << info.fileName();
+    qDebug() << "Type :: " << getStringType(type) << "Name :: " << info.fileName();
+    bool status = false;
     if(info.isFile())
     {
-
+     QFile file;
+     QDir dir(path);
+     QString dirName = mDirNames->value(type);
+     dir.mkdir(dirName);
+     QString newPath = dir.filePath(dirName + "/" + info.fileName());
+     qDebug() << info.absoluteFilePath() << "\t-->\t" << newPath ;
+     status = file.rename(info.absoluteFilePath(), newPath);
     }
     else if(info.isDir())
     {
+        QDir dir(info.absoluteFilePath());
+        QString dirName = dir.dirName();
+        dir.setPath(path);
+        QString dirTypeName = mDirNames->value(type);
+        dir.mkdir(dirTypeName);
+        QString newPath = dir.filePath(dirTypeName + "/" + dirName);
+        qDebug() << info.absoluteFilePath() << "\t-->\t" << newPath ;
+        status = dir.rename(info.absoluteFilePath(), newPath);
+    }
 
+    if(status == false)
+    {
+        qDebug() << "unable to move " +info.absoluteFilePath();
     }
 }
+
 
 bool DirWatcher::isSpecialDirectory(QFileInfo& path)
 {
@@ -230,6 +245,29 @@ DirType DirWatcher::getType(QFileInfo &path)
     return OTHERS;
 }
 
+QString DirWatcher::getStringType(DirType dirType)
+{
+    switch(dirType)
+    {
+    case AUDIO :
+        return "audio";
+    case VIDEO:
+        return "video";
+    case IMAGE:
+        return "image";
+    case DOCUMENT:
+        return "document";
+    case ARCHIVE:
+        return "archive";
+    case CODE:
+        return "code";
+    case OTHERS:
+        return "others";
+     default:
+        return "not a valid type";
+    }
+}
+
 DirType DirWatcher::typeFromMime(QString mimeType)
 {
 
@@ -263,7 +301,12 @@ DirType DirWatcher::typeFromMime(QString mimeType)
             mimeType == "application/zip" ||
             mimeType == "application/x-msi" ||
             mimeType == "application/x-compressed-tar" ||
-            mimeType == "application/x-tar"
+            mimeType == "application/x-tar" ||
+            mimeType == "application/x-java-archive" ||
+            mimeType == "application/x-sharedlib" ||
+            mimeType == "application/octet-stream" ||
+            mimeType == "application/vnd.android.package-archive" ||
+            mimeType == "application/x-bzip-compressed-tar"
             )
     {
         return ARCHIVE;
@@ -273,7 +316,8 @@ DirType DirWatcher::typeFromMime(QString mimeType)
             mimeType == "text/plain" ||
             mimeType == "application/rtf" ||
             mimeType == "application/msword" ||
-            mimeType == "text/csv"
+            mimeType == "text/csv" ||
+            mimeType == "application/xml"
             )
     {
         return DOCUMENT;
@@ -289,12 +333,21 @@ DirType DirWatcher::typeFromMime(QString mimeType)
             mimeType == "text/x-cmake" ||
             mimeType == "text/css" ||
             mimeType == "text/x-c++src" ||
-            mimeType == "text/x-c++hdr"
+            mimeType == "text/x-c++hdr" ||
+            mimeType == "text/x-scala" ||
+            mimeType == "application/javascript" ||
+            mimeType == "application/x-shellscript" ||
+            mimeType == "text/x-matlab" ||
+            mimeType == "application/x-perl" ||
+            mimeType == "text/x-objcsrc" ||
+            mimeType == "text/x-verilog" ||
+            mimeType == "text/x-markdown"
             )
     {
         return CODE;
     }
 
+    //qDebug() << "unknown mimetype :: " << mimeType;
     return OTHERS;
 
 }

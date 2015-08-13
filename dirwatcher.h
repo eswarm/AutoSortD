@@ -21,8 +21,6 @@ OTHERS
 };
 
 
-
-
 class DirWatcher : public QObject
 {
     Q_OBJECT
@@ -30,10 +28,10 @@ class DirWatcher : public QObject
 public:
 
     explicit DirWatcher(QObject *parent = 0);
-    void addFolder(const QString &folderName);
+    void addToSettings(const QString &folderName);
     void setFolders(const QList<QString> &folderList);
     QList<QString> getFolders();
-    bool removeFolder(const QString& folderName);
+    bool removeFromSettings(const QString& folderName);
     void startWatch();
     ~DirWatcher();
 
@@ -49,14 +47,14 @@ public slots:
 private :
     DirType getType(QFileInfo &path);
     DirType typeFromMime(QString mimeType);
-    void move(const QFileInfo &info, DirType type);
+    void move(const QFileInfo &info, DirType type, const QString& path);
+    QString getStringType(DirType dirType);
+
 QSettings *mSettings;
 QStringList *mFolderList;
 QFileSystemWatcher *mWatcher;
 QQueue<QFileInfo> *mQ;
 QHash<DirType, QString> *mDirNames;
-QHash<QString, DirType> *mMimeType;
-
 QHash<QString, QString> *mMimesSuffix;
 };
 
