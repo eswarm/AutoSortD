@@ -45,7 +45,7 @@ public slots:
     void sortDirectory(QString path);
 
 private :
-    DirType getType(QFileInfo &path);
+    DirType getType(QFileInfo& path);
     DirType typeFromMime(QString mimeType);
     void move(const QFileInfo &info, DirType type, const QString& path);
     QString getStringType(DirType dirType);

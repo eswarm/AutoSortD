@@ -131,7 +131,7 @@ void DirWatcher::sortDirectory(QString path)
         QFileInfo fileInfo = it.fileInfo();
         if(!isSpecialDirectory(fileInfo))
         {
-            DirType type = getType(it.fileInfo());
+            DirType type = getType(fileInfo);
             move(fileInfo, type, path);
         }
     }
@@ -185,7 +185,7 @@ bool DirWatcher::isSpecialDirectory(QFileInfo& path)
 }
 
 
-DirType DirWatcher::getType(QFileInfo &path)
+DirType DirWatcher::getType(QFileInfo& path)
 {
     QMimeType mimeType;
     QMimeDatabase mimeDatabase;
