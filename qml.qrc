@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+        <file>FolderRow.qml</file>
     </qresource>
 </RCC>
