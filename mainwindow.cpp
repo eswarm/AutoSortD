@@ -7,7 +7,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    mDirWatcher = new DirWatcher();
+    //mDirWatcher = new DirWatcher();
 
     mFileDialog = new QFileDialog(this);
     mFileDialog->setFileMode(QFileDialog::Directory);
@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->addFolderButton, SIGNAL(clicked(bool)), mFileDialog, SLOT(show()));
     connect(mFileDialog, SIGNAL(fileSelected(QString)), this, SLOT(directorySelected(QString)));
 
-    mDirWatcher->sortDirectory("C:/Users/eswar.malla/Downloads");
+    //mDirWatcher->sortDirectory("D:/downloads");
 
 }
 

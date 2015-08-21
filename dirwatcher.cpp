@@ -4,30 +4,49 @@
 #include <QDir>
 #include <QDebug>
 #include <QDirIterator>
+#include <QStandardPaths>
+
 
 //const QString directories[] = {"audio", "video", "code", "documents", "archives", "images", "others" };
 int fileTypePriority[] = {5, 5, 1, 5, 5 ,10, 1};
+DirWatcher* DirWatcher::mSelf;
 
 DirWatcher::DirWatcher(QObject *parent) : QObject(parent)
 {
 
-mSettings = new QSettings(QSettings::IniFormat, QSettings::UserScope,"eswar", "smart folder");
-mFolderList = new QStringList();
-mWatcher = new QFileSystemWatcher();
-mDirNames = new QHash<DirType, QString>();
-connect(mWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(contentChanged(QString)) );
+    mSettings = new QSettings(QSettings::IniFormat, QSettings::UserScope,"eswar", "smart folder");
+    /* Get the folder list from settings */
+    *mFolderList = getFolders();
+    mWatcher = new QFileSystemWatcher();
+    mDirNames = new QHash<DirType, QString>();
 
-/* Initialize the names */
-mDirNames->insert(AUDIO, "audio");
-mDirNames->insert(VIDEO, "video");
-mDirNames->insert(CODE, "code");
-mDirNames->insert(DOCUMENT, "documents");
-mDirNames->insert(ARCHIVE, "archives");
-mDirNames->insert(OTHERS, "others");
-mDirNames->insert(IMAGE, "images");
+    connect(mWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(contentChanged(QString)) );
 
-mMimesSuffix = new QHash<QString, QString>();
+    /* Initialize the names */
+    mDirNames->insert(AUDIO, "audio");
+    mDirNames->insert(VIDEO, "video");
+    mDirNames->insert(CODE, "code");
+    mDirNames->insert(DOCUMENT, "documents");
+    mDirNames->insert(ARCHIVE, "archives");
+    mDirNames->insert(OTHERS, "others");
+    mDirNames->insert(IMAGE, "images");
 
+    mMimesSuffix = new QHash<QString, QString>();
+
+    // If this is first launch, add downloads directory.
+    if( isFirstLaunch() )
+    {
+        addToSettings(QStandardPaths::displayName(QStandardPaths::DownloadLocation));
+    }
+}
+
+DirWatcher* DirWatcher::getInstance(QObject *parent)
+{
+    if(mSelf == NULL)
+    {
+        mSelf = new DirWatcher(parent);
+    }
+    return mSelf;
 }
 
 void DirWatcher::addToSettings(const QString &folderName)
@@ -35,7 +54,6 @@ void DirWatcher::addToSettings(const QString &folderName)
 
     int size = mSettings->beginReadArray("folders");
     mSettings->endArray();
-
     mSettings->beginWriteArray("folders");
     mSettings->setArrayIndex(size);
     mSettings->setValue("folderPath",folderName);
@@ -43,7 +61,7 @@ void DirWatcher::addToSettings(const QString &folderName)
 
 }
 
-void DirWatcher::setFolders(const QList<QString> &folderList)
+void DirWatcher::setFolders(const QList<QVariant> &folderList)
 {
     mSettings->remove("folders");
     mSettings->beginWriteArray("folders");
@@ -54,31 +72,33 @@ void DirWatcher::setFolders(const QList<QString> &folderList)
     mSettings->endArray();
 }
 
-QList<QString> DirWatcher::getFolders()
+QList<QVariant> DirWatcher::getFolders()
 {
-    QList<QString> folderList;
+    qDebug() << "Getfolders";
+    QList<QVariant> folderList;
     int size = mSettings->beginReadArray("folders");
 
     for (int i = 0; i < size; ++i) {
         mSettings->setArrayIndex(i);
-        QString path = mSettings->value("folderPath").toString();
+        QVariant path = mSettings->value("folderPath");
         folderList.append(path);
     }
     mSettings->endArray();
+    qDebug() << "Getfolders end";
     return folderList;
 }
 
 bool DirWatcher::removeFromSettings(const QString& folderName)
 {
-    QList<QString> folderList = getFolders();
-    QList<QString> newList;
+    QList<QVariant> folderList = getFolders();
+    QList<QVariant> newList;
     bool found = false;
 
     // Remove the current folder
     for(int i=0 ; i<folderList.size(); i++)
     {
-        QString crntFolder = folderList.at(i);
-        if(folderName.compare(crntFolder) == 0)
+        QVariant crntFolder = folderList.at(i);
+        if(folderName.compare(crntFolder.toString()) == 0)
         {
             found = true;
         }
@@ -97,18 +117,27 @@ DirWatcher::~DirWatcher()
 {
     delete mSettings;
     delete mFolderList;
+    delete mWatcher;
+    delete mQ;
+    delete mDirNames;
+    delete mMimesSuffix;
 }
 
 void DirWatcher::startWatch()
 {
     mFolderList->clear();
     *mFolderList = getFolders();
-    mWatcher->addPaths(*mFolderList);
+    QVariant v;
+    foreach(v, *mFolderList)
+    {
+        mWatcher->addPath(v.toString());
+    }
 }
 
 void DirWatcher::contentChanged(QString path)
 {
-
+    // TODO :: check this.
+    sortDirectory(path);
 }
 
 void DirWatcher::sortDirectory(QString path)
@@ -148,13 +177,13 @@ void DirWatcher::move(const QFileInfo &info, DirType type, const QString& path)
     bool status = false;
     if(info.isFile())
     {
-     QFile file;
-     QDir dir(path);
-     QString dirName = mDirNames->value(type);
-     dir.mkdir(dirName);
-     QString newPath = dir.filePath(dirName + "/" + info.fileName());
-     qDebug() << info.absoluteFilePath() << "\t-->\t" << newPath ;
-     status = file.rename(info.absoluteFilePath(), newPath);
+        QFile file;
+        QDir dir(path);
+        QString dirName = mDirNames->value(type);
+        dir.mkdir(dirName);
+        QString newPath = dir.filePath(dirName + "/" + info.fileName());
+        qDebug() << info.absoluteFilePath() << "\t-->\t" << newPath ;
+        status = file.rename(info.absoluteFilePath(), newPath);
     }
     else if(info.isDir())
     {
@@ -192,20 +221,20 @@ DirType DirWatcher::getType(QFileInfo& path)
 
     if(path.isFile())
     {
-       mimeType = mimeDatabase.mimeTypeForFile(path);
+        mimeType = mimeDatabase.mimeTypeForFile(path);
 
-       mMimesSuffix->insert(path.suffix(), mimeType.name());
-       //qDebug() << "Suffix " << path.suffix() << " mime " << mimeType;
+        mMimesSuffix->insert(path.suffix(), mimeType.name());
+        //qDebug() << "Suffix " << path.suffix() << " mime " << mimeType;
 
-       if(mimeType.isValid())
-       {
+        if(mimeType.isValid())
+        {
             QString type = mimeType.name();
             return typeFromMime(type);
-       }
-       else
-       {
-          return OTHERS;
-       }
+        }
+        else
+        {
+            return OTHERS;
+        }
     }
     else if(path.isDir())
     {
@@ -263,10 +292,11 @@ QString DirWatcher::getStringType(DirType dirType)
         return "code";
     case OTHERS:
         return "others";
-     default:
+    default:
         return "not a valid type";
     }
 }
+
 
 DirType DirWatcher::typeFromMime(QString mimeType)
 {
@@ -350,6 +380,23 @@ DirType DirWatcher::typeFromMime(QString mimeType)
     //qDebug() << "unknown mimetype :: " << mimeType;
     return OTHERS;
 
+}
+
+bool DirWatcher::isFirstLaunch()
+{
+    bool firstLaunch = mSettings->value("firstLaunch", true).toBool();
+    mSettings->setValue("firstLaunch", false);
+    return firstLaunch;
+}
+
+// singleton type provider function (callback)
+QObject *DirWatcher::singletontype_provider(QQmlEngine *engine, QJSEngine *scriptEngine)
+{
+    Q_UNUSED(engine)
+    Q_UNUSED(scriptEngine)
+
+    DirWatcher *dirWatcher = DirWatcher::getInstance(NULL);
+    return dirWatcher;
 }
 
 

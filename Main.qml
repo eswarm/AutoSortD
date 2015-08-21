@@ -5,6 +5,8 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.4
 
+import eswarm.DirWatcher 1.0
+
 ApplicationWindow {
 
     title: qsTr("AutoSortD")
@@ -23,6 +25,7 @@ ApplicationWindow {
         Layout.minimumWidth: 640
 
         ColumnLayout {
+
             id: col
             anchors.horizontalCenter: parent.horizontalCenter
             Layout.fillWidth: true
@@ -43,8 +46,8 @@ ApplicationWindow {
             Button  {
                 text : "Add folder"
                 anchors.horizontalCenter: parent.horizontalCenter
-
                 style: CustButtonStyle{}
+                onClicked: fileDialog.open()
             }
         }
 
@@ -72,9 +75,11 @@ ApplicationWindow {
 
     Component.onCompleted: {
         //addFolderRow("a big path to somewhere", "name");
+        var folders = DirWatcher.getFolders();
+        //printObject(folders);
     }
 
-    function addFolderRow(path, name) {
+    function addFolderRow(path) {
         var folderRowComp;
         var folderRowObj;
         folderRowComp = Qt.createComponent("FolderRow.qml")
@@ -91,5 +96,27 @@ ApplicationWindow {
                console.log( p + '::' + obj[p] + '\n');
             }
         }
+    }
+
+    FileDialog {
+        id: fileDialog
+        title: "Please choose a folder"
+        folder: shortcuts.home
+        selectFolder: true
+        onAccepted: {
+            var path = fileDialog.fileUrl.toString();
+            // remove prefixed "file:///"
+            path = path.replace(/^(file:\/{3})|(qrc:\/{2})|(http:\/{2})/,"");
+            // unescape html codes like '%23' for '#'
+            var cleanPath = decodeURIComponent(path);
+            //Qt.quit()
+
+            addFolderRow(cleanPath)
+        }
+        onRejected: {
+            console.log("Canceled")
+            //Qt.quit()
+        }
+       // Component.onCompleted: visible = true
     }
 }
