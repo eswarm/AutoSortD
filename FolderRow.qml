@@ -7,11 +7,12 @@ import QtQuick.Controls.Styles 1.4
 
 RowLayout {
 
-    property alias text : label.text
-    property string name;
+    id : folderRow;
+    property alias text: folderLabel.text;
+    signal remove(string text);
 
     Label {
-        id : label
+        id : folderLabel
         color: "#ffffff"
         text: "Folder"
         font.pixelSize: 22
@@ -20,9 +21,10 @@ RowLayout {
     }
 
     Button  {
-        id : button
+        id : removeButton
         text : "Remove"
         style : CustButtonStyle{}
+        onClicked: remove(parent.text)
     }
 
 }

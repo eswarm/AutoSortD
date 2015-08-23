@@ -14,8 +14,7 @@ ApplicationWindow {
     height: 640
     color: "#2196f3"
     visible: true
-    property int margin : 10
-
+    property int margin : 10;
 
     ColumnLayout {
         id: mainColumn
@@ -74,24 +73,72 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        //addFolderRow("a big path to somewhere", "name");
-        var folders = DirWatcher.getFolders();
-        //printObject(folders);
-    }
+        refreshFolderRows();
+        }
 
-    function addFolderRow(path) {
-        var folderRowComp;
-        var folderRowObj;
-        folderRowComp = Qt.createComponent("FolderRow.qml")
-        folderRowObj = folderRowComp.createObject(folderLayout, { "text" : path });
-        if (folderRowObj === null) {
-            // Error Handling
-            console.log("Error creating object");
+    Connections {
+        target: DirWatcher
+        onTextChanged: {
+            changesText.text += msg
         }
     }
 
+    function sort() {
+        DirWatcher.startSort();
+    }
+
+    // Destroy everything and create everything
+    // Not efficient, but there should not be a lot of folders
+    // being monitored.
+    function refreshFolderRows() {
+
+        var folders = DirWatcher.getFolders();
+
+        // Destroy everything.
+        for(var i = 0; i <folderLayout.children.length; i++) {
+                folderLayout.children[i].destroy();
+        }
+
+        var folderRowComp;
+        folderRowComp = Qt.createComponent("FolderRow.qml");
+
+        if( folderRowComp.status != Component.Ready )
+        {
+            if( folderRowComp.status == Component.Error )
+                console.debug("Error:"+ folderRowComp.errorString() );
+            return; // or maybe throw
+        }
+
+        // Create everything.
+        for(var f in folders)
+        {
+        var folderRowObj;
+        folderRowObj = folderRowComp.createObject(folderLayout, { "text" : folders[f] });
+        if (folderRowObj == null) {
+            // Error Handling
+            console.log("Error creating object");
+            return;
+        }
+        folderRowObj.remove.connect(removeFolderRow)
+        }
+
+        sort();
+    }
+
+    function removeFolderRow(path)
+    {
+        DirWatcher.removeFromSettings(path);
+        refreshFolderRows();
+    }
+
+    function addFolderRow(path)
+    {
+        DirWatcher.addToSettings(path);
+        refreshFolderRows();
+    }
+
     function printObject(obj) {
-    for (var p in obj) {
+        for (var p in obj) {
             if (obj.hasOwnProperty(p)) {
                console.log( p + '::' + obj[p] + '\n');
             }
@@ -110,7 +157,6 @@ ApplicationWindow {
             // unescape html codes like '%23' for '#'
             var cleanPath = decodeURIComponent(path);
             //Qt.quit()
-
             addFolderRow(cleanPath)
         }
         onRejected: {
@@ -119,4 +165,5 @@ ApplicationWindow {
         }
        // Component.onCompleted: visible = true
     }
+
 }

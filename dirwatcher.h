@@ -12,6 +12,8 @@
 #include <QQmlListProperty>
 #include <QQmlEngine>
 #include <QJSEngine>
+#include <QMutex>
+#include <QMutexLocker>
 
 enum DirType {
 AUDIO,
@@ -35,21 +37,29 @@ public:
     Q_INVOKABLE QList<QVariant> getFolders();
     Q_INVOKABLE bool removeFromSettings(const QString& folderName);
     Q_INVOKABLE void startWatch();
+    Q_INVOKABLE void clearWatch();
     ~DirWatcher();
     bool isSpecialDirectory(QFileInfo& path);
     static DirWatcher* getInstance(QObject *parent);
     bool isFirstLaunch();
     static QObject *singletontype_provider(QQmlEngine *engine, QJSEngine *scriptEngine);
 
+    Q_INVOKABLE void startSort();
+
+
 signals:
+    void textChanged(QString msg);
     void foldersChanged(QList<QString> folders);
+
 
 public slots:
     void contentChanged(QString path);
     void sortDirectory(QString path);
+    void sortFinished();
 
 private :
 
+    void sortAll();
     explicit DirWatcher(QObject *parent = 0);
     DirType getType(QFileInfo& path);
     DirType typeFromMime(QString mimeType);
@@ -61,8 +71,9 @@ QList<QVariant> *mFolderList;
 QFileSystemWatcher *mWatcher;
 QQueue<QFileInfo> *mQ;
 QHash<DirType, QString> *mDirNames;
-QHash<QString, QString> *mMimesSuffix;
 static DirWatcher *mSelf;
+QMutex mutex;
+QFutureWatcher mFutureWatcher;
 };
 
 #endif // DIRWATCHER_H
