@@ -1,10 +1,11 @@
 TEMPLATE = app
 
-QT += qml quick widgets
+QT += qml quick widgets androidextras
 
 SOURCES += main.cpp \
     mainwindow.cpp \
-    dirwatcher.cpp
+    dirwatcher.cpp \
+    androidfiledialog.cpp
 
 RESOURCES += \
     qml.qrc
@@ -20,4 +21,5 @@ FORMS += \
 
 HEADERS += \
     mainwindow.h \
-    dirwatcher.h
+    dirwatcher.h \
+    androidfiledialog.h

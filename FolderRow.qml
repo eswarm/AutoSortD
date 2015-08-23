@@ -23,7 +23,7 @@ RowLayout {
     Button  {
         id : removeButton
         text : "Remove"
-        style : CustButtonStyle{}
+        //style : CustButtonStyle{}
         onClicked: remove(parent.text)
     }
 

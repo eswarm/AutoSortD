@@ -14,6 +14,7 @@
 #include <QJSEngine>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QFutureWatcher>
 
 enum DirType {
 AUDIO,
@@ -45,17 +46,20 @@ public:
     static QObject *singletontype_provider(QQmlEngine *engine, QJSEngine *scriptEngine);
 
     Q_INVOKABLE void startSort();
+    Q_INVOKABLE void launchFileDialog();
 
 
 signals:
     void textChanged(QString msg);
     void foldersChanged(QList<QString> folders);
+    void fileSelected(QString fileName);
 
 
 public slots:
     void contentChanged(QString path);
     void sortDirectory(QString path);
     void sortFinished();
+    void openFileNameReady(QString fileName);
 
 private :
 
@@ -73,7 +77,7 @@ QQueue<QFileInfo> *mQ;
 QHash<DirType, QString> *mDirNames;
 static DirWatcher *mSelf;
 QMutex mutex;
-QFutureWatcher mFutureWatcher;
+QFutureWatcher<void> mFutureWatcher;
 };
 
 #endif // DIRWATCHER_H

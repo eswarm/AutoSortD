@@ -166,4 +166,9 @@ ApplicationWindow {
        // Component.onCompleted: visible = true
     }
 
+    function launchFileDialog()
+    {
+        DirWatcher.launchFileDialog();
+    }
+
 }

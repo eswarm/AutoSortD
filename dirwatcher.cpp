@@ -7,6 +7,7 @@
 #include <QStandardPaths>
 #include <QCoreApplication>
 #include <QtConcurrent/QtConcurrent>
+#include "androidfiledialog.h"
 
 //const QString directories[] = {"audio", "video", "code", "documents", "archives", "images", "others" };
 int fileTypePriority[] = {5, 5, 1, 5, 5 ,10, 1};
@@ -179,7 +180,7 @@ void DirWatcher::startSort()
 {
     QMutexLocker locker(&mutex);
     clearWatch();
-    QFuture future = QtConcurrent::run(this, &DirWatcher::sortAll);
+    QFuture<void> future = QtConcurrent::run(this, &DirWatcher::sortAll);
     mFutureWatcher.setFuture(future);
 }
 
@@ -452,3 +453,22 @@ QObject *DirWatcher::singletontype_provider(QQmlEngine *engine, QJSEngine *scrip
 }
 
 
+void DirWatcher::launchFileDialog() {
+    AndroidFileDialog *fileDialog = new AndroidFileDialog();
+    connect(fileDialog, SIGNAL(existingFileNameReady(QString)), this, SLOT(openFileNameReady(QString)));
+    bool success = fileDialog->provideExistingFileName();
+    if (!success) {
+        qDebug() << "Problem with JNI or sth like that...";
+        disconnect(fileDialog, SIGNAL(existingFileNameReady(QString)), this, SLOT(openFileNameReady(QString)));
+        //or just delete fileDialog instead of disconnect
+    }
+}
+
+void DirWatcher::openFileNameReady(QString fileName)
+{
+    if (!fileName.isNull()) {
+            emit fileSelected(fileName);
+        } else {
+            qDebug() << "User did not choose file";
+        }
+}
